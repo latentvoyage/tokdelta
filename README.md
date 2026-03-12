@@ -51,46 +51,6 @@ state.delete(0, 9)           # removes "[SYSTEM] "
 assert state.token_ids == PromptState(state.prompt, "tiktoken", "gpt-4").token_ids
 ```
 
-## Usage
-
-### `PromptState(prompt, tokenizer_name, model_name)`
-
-Create a new prompt state. Runs a full tokenization on init.
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `prompt` | `str` | Initial prompt text |
-| `tokenizer_name` | `str` | `"tiktoken"` or `"huggingface"` |
-| `model_name` | `str` | Model name passed to the backend (e.g. `"gpt-4"`, `"meta-llama/Llama-3-8B"`) |
-
-### `.append(text)`
-
-Append text to the end of the prompt. Only the tail region is retokenized.
-
-### `.insert(char_pos, text)`
-
-Insert text at character position `char_pos`. Raises `ValueError` if out of range. Retokenizes the region around the insertion point.
-
-### `.delete(start_char, end_char)`
-
-Delete the character range `[start_char, end_char)`. Raises `ValueError` on invalid range. Retokenizes the region around the deletion.
-
-### `.prompt` → `str`
-
-Current prompt text (decoded from the byte buffer).
-
-### `.token_ids` → `list[int]`
-
-Current token ID list.
-
-### `.token_offsets` → `list[tuple[int, int]]`
-
-Per-token byte offset pairs `(byte_start, byte_end)`. Offsets are contiguous: `offsets[i][1] == offsets[i+1][0]`, and `offsets[0][0] == 0`, `offsets[-1][1] == len(byte_buffer)`.
-
-### `.get_tokens()` → `dict`
-
-Returns `{"token_ids": [...], "offsets": [...]}`.
-
 ## Agentic Usage Patterns
 
 TokDelta is designed for the edit patterns that show up in agentic LLM inference:
