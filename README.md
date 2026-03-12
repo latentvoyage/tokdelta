@@ -51,7 +51,7 @@ state.delete(0, 9)           # removes "[SYSTEM] "
 assert state.token_ids == PromptState(state.prompt, "tiktoken", "gpt-4").token_ids
 ```
 
-## API
+## Usage
 
 ### `PromptState(prompt, tokenizer_name, model_name)`
 
@@ -216,13 +216,110 @@ The offset shift is a single list comprehension over all tokens — O(N) — but
 
 **Space:** O(N) for the byte buffer + O(N) for token IDs + O(N) for offset pairs = O(N) total.
 
-## Potential Improvements
+## Benchmarks — Incremental vs Full Retokenization
 
-- **Rope / piece-table buffer** — replace `bytearray` with a rope for O(log n) insert/delete on very large prompts (100K+ tokens). The current `bytearray` is O(n) for mid-buffer edits due to memmove, but Python's C-level memmove is fast enough for prompts under ~50K tokens.
-- **Batch edits** — accept multiple edits in a single call, sort them, and apply from right to left to avoid cascading offset shifts.
-- **KV cache alignment** — expose the longest common prefix length after each edit so the inference engine can reuse the KV cache up to that point.
-- **Streaming detokenization** — incremental decode as new tokens are appended.
-- **Concurrent access** — TokDelta is not thread-safe. Callers managing concurrent access to the same `PromptState` should synchronize externally (e.g. a per-state lock or an asyncio queue). Internal per-method locking was deliberately avoided because it cannot prevent TOCTOU races (caller reads `.prompt`, computes a position, then calls `.insert()` — another thread could have edited in between).
+All numbers are median wall-clock µs on a single core (Apple Silicon), tiktoken gpt-4 backend.
+
+### End-to-end single-operation timings
+
+| Tokens | Full `encode()` | Append | Insert (mid) | Delete (mid) | Insert speedup |
+|-------:|----------------:|-------:|-------------:|-------------:|---------------:|
+| 1,000 | 194 µs | 12 µs | 43 µs | 266 µs | **4.6×** |
+| 4,000 | 827 µs | ~0 µs | 175 µs | 456 µs | **4.7×** |
+| 16,000 | 3,280 µs | 68 µs | 658 µs | 1,691 µs | **5.0×** |
+| 32,000 | 6,583 µs | 49 µs | 1,622 µs | 3,870 µs | **4.1×** |
+| 64,000 | 13,304 µs | 360 µs | 3,488 µs | 7,599 µs | **3.8×** |
+
+**Append is the big winner** — 19–37× faster than a full re-encode at 32–64K tokens, because it touches only the tail and requires no offset shifting. Agentic workloads are append-heavy (streaming responses, adding turns), so this is the most impactful path.
+
+Insert and delete are 3.8–5× faster. The O(N) offset shift is the dominant remaining cost (see analysis below).
+
+### Where the time actually goes (insert at 64K tokens)
+
+| Component | Time | % of insert |
+|-----------|-----:|------------:|
+| Offset shift (list comprehension, N tuples) | 2,935 µs | 84% |
+| Token-index lookup (`bisect` on offset tuples, ×2) | ~1 µs | <0.1% |
+| `tokenizer.encode()` on ~20-token window | 20 µs | 0.6% |
+| `bytearray` mid-buffer splice (C memmove) | 3 µs | <0.1% |
+| List slice assignment (token_ids splice) | <1 µs | <0.1% |
+| Misc (prompt decode, char→byte) | ~15 µs | 0.4% |
+
+The tokenizer encode on the edit window is **constant at ~20 µs** regardless of prompt size. Full encode scales linearly: 200 µs at 1K → 13,000 µs at 64K. The theoretical speedup ceiling is **10–660×** — but the O(N) offset shift consumes 84% of the time, capping actual insert speedup at ~4×.
+
+## Can Rope / Tree Data Structures Help?
+
+We benchmarked four offset-storage strategies:
+
+| Tokens | Tuples (current) | Cumulative (copy) | Cumulative (in-place) | Fenwick tree (BIT) |
+|-------:|-----------------:|-------------------:|----------------------:|-------------------:|
+| 1,000 | 30 µs | 9 µs | 14 µs | 0.3 µs |
+| 4,000 | 172 µs | 39 µs | 56 µs | 0.4 µs |
+| 16,000 | 731 µs | 173 µs | 227 µs | 0.5 µs |
+| 32,000 | 1,424 µs | 311 µs | 447 µs | 0.6 µs |
+| 64,000 | 2,935 µs | 651 µs | 913 µs | 0.6 µs |
+
+And three token-lookup strategies:
+
+| Tokens | Build starts list + bisect (old) | Bisect on tuples directly (current) | Fenwick prefix search |
+|-------:|---------------------------------:|-------------------------------------:|----------------------:|
+| 1,000 | 8 µs | 0.3 µs | 0.9 µs |
+| 16,000 | 140 µs | 0.3 µs | 1.3 µs |
+| 64,000 | 478 µs | 0.3 µs | 1.4 µs |
+
+### Projected insert latency with each optimization
+
+| Tokens | Full encode | Current (tuples + bisect fix) | + Cumulative in-place | + Fenwick tree | Window encode only (floor) |
+|-------:|------------:|------------------------------:|----------------------:|---------------:|---------------------------:|
+| 1,000 | 204 µs | 72 µs | 54 µs | 42 µs | 19 µs |
+| 4,000 | 851 µs | 218 µs | 97 µs | 42 µs | 20 µs |
+| 16,000 | 3,281 µs | 773 µs | 270 µs | 43 µs | 20 µs |
+| 32,000 | 6,414 µs | 1,455 µs | 494 µs | 45 µs | 21 µs |
+| 64,000 | 13,123 µs | 2,994 µs | 942 µs | 45 µs | 21 µs |
+
+With a Fenwick tree the projected speedup is **~150–300×** over full retokenization at 32–64K tokens.
+
+### Analysis: what helps and what doesn't
+
+**A rope for the byte buffer is unnecessary.** Python's `bytearray` splice is a C-level `memmove` — only 3 µs even at 64K tokens (≈250 KB). The bottleneck is Python-level iteration over token offsets, not C-level memory operations.
+
+**A Fenwick tree (Binary Indexed Tree) for offsets eliminates the dominant O(N) cost.** By storing *token lengths* instead of absolute offsets, a BIT computes absolute positions as prefix sums in O(log N). An insert just does a single O(log N) point-update instead of shifting every offset:
+
+| Operation | Tuples (current) | Fenwick tree |
+|-----------|:----------------:|:------------:|
+| Offset shift | O(N) | O(log N) |
+| Token-at-byte lookup | O(log N)* | O(log N) |
+| Splice after retokenize | O(N) | O(N)† |
+
+\*Already optimized with `bisect` on tuples.
+†Fenwick trees don't support mid-array insert/delete; the tree must be rebuilt after a token-count change. The rebuild is O(N) but with much smaller constants (integer sums vs. Python tuple creation).
+
+**An order-statistics tree (implicit treap, B+ tree) would make splice O(W log N) too**, fully eliminating all O(N) work. But:
+- Pure Python implementation would have high constant factors (~1 µs/op vs ~50 ns for flat array access)
+- A C/Rust extension would be needed for production-grade performance
+- At current prompt sizes (≤128K tokens), the Fenwick approach is likely sufficient
+
+### Summary
+
+| Data structure | Insert complexity | Practical speedup at 64K | Implementation effort |
+|----------------|:-----------------:|:------------------------:|:---------------------:|
+| Flat list of tuples (current) | O(N) + T(W) | 3.8× | Done |
+| Cumulative array, in-place shift | O(N) + T(W) | ~14× | Low |
+| Fenwick tree (BIT) | O(log N)* + T(W) | ~300× | Medium |
+| Order-statistics tree (treap) | O(W log N) + T(W) | ~300× | High (or C/Rust ext.) |
+
+\*O(N) rebuild on token-count change, but fast constant factor.
+
+The incremental retokenization **algorithm** is sound — the T(W) vs T(N) savings are real and grow linearly with prompt size. The current **implementation** captures those savings fully for appends (19–37×) but is bottlenecked by O(N) offset bookkeeping for inserts/deletes. A Fenwick tree or order-statistics tree would unlock the full speedup.
+
+## Next Steps
+
+- **Fenwick-tree offsets** — replace the flat `token_offsets` list with a BIT over token lengths, eliminating the O(N) offset shift and achieving ~150–300× speedup for insert/delete at 32–64K tokens.
+- **Order-statistics tree** — for the token/offset arrays, an implicit treap or B+ tree would make splice O(W log N), fully eliminating all O(N) per-edit work.
+- **KV cache alignment** — expose a diff of token IDs between edits so inference engines can reuse their KV cache up to the first changed token.
+- **Streaming detokenization** — an `append_token_id()` method for incremental decode during streaming inference.
+- **C/Rust hot path** — rewrite the offset shift + retokenization loop in C or Rust for 10–50× lower constant factors, enabling sub-microsecond edits.
+
 
 ## Tests
 
@@ -246,9 +343,13 @@ tokdelta/
 │   ├── huggingface_tokenizer.py
 │   └── tokenizer_registry.py  # lazy-import factory
 ├── utils.py                 # char_to_byte, byte_to_char, token_index_at_byte
-└── tests/
-    ├── test_incremental.py
-    ├── test_rigorous.py
-    └── test_agentic.py
+├── tests/
+│   ├── test_incremental.py  #  7 core tests
+│   ├── test_rigorous.py     # 46 edge-case tests
+│   └── test_agentic.py      # 24 agentic workflow tests
+└── benchmarks/
+    ├── bench_incremental_vs_full.py   # end-to-end comparison
+    ├── bench_bottleneck.py            # per-component cost breakdown
+    └── bench_data_structures.py       # rope / Fenwick / cumulative comparison
 ```
 

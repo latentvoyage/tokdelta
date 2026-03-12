@@ -15,10 +15,10 @@ def byte_to_char(text: str, byte_idx: int) -> int:
 def token_index_at_byte(offsets: list[tuple[int, int]], byte_pos: int) -> int:
     """Return the index of the token whose byte span contains `byte_pos`.
 
-    Uses a simple bisect on the start positions. If byte_pos falls before
-    the first token, returns 0.
+    Bisects directly on the offset tuples — tuples compare element-by-
+    element, so ``(byte_pos, inf)`` lands right after the last tuple whose
+    start ≤ byte_pos.  O(log N) with no temporary list creation.
     """
-    starts = [s for s, _ in offsets]
-    idx = bisect.bisect_right(starts, byte_pos) - 1
+    idx = bisect.bisect_right(offsets, (byte_pos, float("inf"))) - 1
     return max(idx, 0)
 
