@@ -1,5 +1,5 @@
 import tiktoken
-from tokenizer.base_tokenizer import BaseTokenizer
+from tokdelta.tokenizer.base_tokenizer import BaseTokenizer
 
 
 class TiktokenTokenizer(BaseTokenizer):

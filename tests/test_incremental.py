@@ -6,10 +6,7 @@ with tokenizing the prompt from scratch, the test fails.
 
 import sys, os
 
-# make sure the repo root is on the path so imports work
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.state import PromptState
+from tokdelta import PromptState
 
 
 # ── helpers ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-from tokenizer.tokenizer_registry import TokenizerRegistry
-from utils import char_to_byte, token_index_at_byte
+from tokdelta.tokenizer.tokenizer_registry import TokenizerRegistry
+from tokdelta.utils import char_to_byte, token_index_at_byte
 
 # How many extra tokens on each side of an edit to include when doing
 # incremental retokenization. The window expands adaptively if merges

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tokdelta"
+version = "0.1.0"
+description = "Stateful tokenizers for agentic inference — incremental edits without full re-tokenization."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Srivarshini" },
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing",
+]
+
+[project.optional-dependencies]
+tiktoken = ["tiktoken>=0.5"]
+huggingface = ["transformers>=4.30"]
+dev = [
+    "pytest>=7.0",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/srivarshini/tokdelta"
+Repository = "https://github.com/srivarshini/tokdelta"
+Issues = "https://github.com/srivarshini/tokdelta/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

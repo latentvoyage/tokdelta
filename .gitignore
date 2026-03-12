@@ -1,3 +1,6 @@
-README.md
+__pycache__/
+*.pyc
 .venv/
-benchmarks/
+*.egg-info/
+dist/
+build/

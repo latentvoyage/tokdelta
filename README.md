@@ -11,24 +11,28 @@ TokDelta keeps a byte-level buffer alongside the token list and a per-token offs
 ## Install
 
 ```bash
-# requires Python 3.10+
-pip install tiktoken          # for tiktoken backend
-# or
-pip install transformers      # for HuggingFace backend
+# core library (no tokenizer backend included)
+pip install tokdelta
+
+# with tiktoken backend
+pip install "tokdelta[tiktoken]"
+
+# with HuggingFace backend
+pip install "tokdelta[huggingface]"
 ```
 
-Clone and use directly (no packaging step required):
+For development:
 
 ```bash
-git clone git@github.com:varshin5699/tokdelta.git && cd tokdelta
+git clone <repo-url> && cd tokdelta
 python -m venv .venv && source .venv/bin/activate
-pip install tiktoken
+pip install -e ".[tiktoken,dev]"
 ```
 
 ## Quick Start
 
 ```python
-from src.state import PromptState
+from tokdelta import PromptState
 
 # create a prompt state with a tokenizer backend
 state = PromptState("You are a helpful assistant.", "tiktoken", "gpt-4")
@@ -106,7 +110,7 @@ state = PromptState("hello", "huggingface", "meta-llama/Llama-3-8B")
 Subclass `BaseTokenizer` and register it:
 
 ```python
-from tokenizer.base_tokenizer import BaseTokenizer
+from tokdelta import BaseTokenizer
 
 class MyTokenizer(BaseTokenizer):
     def encode(self, text: str) -> list[int]: ...
@@ -293,16 +297,20 @@ python tests/test_agentic.py       # 24 agentic workflow tests (tool calls, cont
 
 ```
 tokdelta/
+├── pyproject.toml           # build config & metadata
+├── LICENSE
+├── README.md
 ├── src/
-│   ├── __init__.py          # exports PromptState
-│   └── state.py             # PromptState: byte buffer, tokens, incremental retokenization
-├── tokenizer/
-│   ├── __init__.py          # exports TokenizerRegistry
-│   ├── base_tokenizer.py    # BaseTokenizer interface
-│   ├── tiktoken_tokenizer.py
-│   ├── huggingface_tokenizer.py
-│   └── tokenizer_registry.py  # lazy-import factory
-├── utils.py                 # char_to_byte, byte_to_char, token_index_at_byte
+│   └── tokdelta/            # installable package
+│       ├── __init__.py      # exports PromptState, BaseTokenizer, TokenizerRegistry
+│       ├── state.py         # PromptState implementation
+│       ├── utils.py         # char_to_byte, byte_to_char, token_index_at_byte
+│       └── tokenizer/
+│           ├── __init__.py
+│           ├── base_tokenizer.py    # BaseTokenizer interface
+│           ├── tiktoken_tokenizer.py
+│           ├── huggingface_tokenizer.py
+│           └── tokenizer_registry.py  # lazy-import factory
 ├── tests/
 │   ├── test_incremental.py  #  7 core tests
 │   ├── test_rigorous.py     # 46 edge-case tests

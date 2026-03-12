@@ -8,10 +8,10 @@ class TokenizerRegistry:
     @staticmethod
     def get_tokenizer(tokenizer_name: str, model_name: str):
         if tokenizer_name == "huggingface":
-            from tokenizer.huggingface_tokenizer import HuggingFaceTokenizer
+            from tokdelta.tokenizer.huggingface_tokenizer import HuggingFaceTokenizer
             return HuggingFaceTokenizer(model_name)
         elif tokenizer_name == "tiktoken":
-            from tokenizer.tiktoken_tokenizer import TiktokenTokenizer
+            from tokdelta.tokenizer.tiktoken_tokenizer import TiktokenTokenizer
             return TiktokenTokenizer(model_name)
         else:
             raise ValueError(f"Unsupported tokenizer: {tokenizer_name}")

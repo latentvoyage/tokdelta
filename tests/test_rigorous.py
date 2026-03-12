@@ -8,9 +8,7 @@ final text.  If they ever disagree, the test fails.
 
 import sys, os, string
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.state import PromptState
+from tokdelta import PromptState
 
 TOK_NAME = "tiktoken"
 MODEL = "gpt-4"
