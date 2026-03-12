@@ -24,7 +24,7 @@ pip install "tokdelta[huggingface]"
 For development:
 
 ```bash
-git clone <repo-url> && cd tokdelta
+git clone git@github.com:varshin5699/tokdelta.git && cd tokdelta
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[tiktoken,dev]"
 ```
