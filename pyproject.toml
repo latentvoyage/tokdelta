@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
-    { name = "Srivarshini" },
+    { name = "Srivarshinee" },
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -35,9 +35,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/srivarshini/tokdelta"
-Repository = "https://github.com/srivarshini/tokdelta"
-Issues = "https://github.com/srivarshini/tokdelta/issues"
+Homepage = "https://github.com/varshin5699/tokdelta"
+Repository = "https://github.com/varshin5699/tokdelta"
+Issues = "https://github.com/varshin5600/tokdelta/issues"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
