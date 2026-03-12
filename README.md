@@ -20,7 +20,7 @@ pip install transformers      # for HuggingFace backend
 Clone and use directly (no packaging step required):
 
 ```bash
-git clone <repo-url> && cd tokdelta
+git clone git@github.com:varshin5699/tokdelta.git && cd tokdelta
 python -m venv .venv && source .venv/bin/activate
 pip install tiktoken
 ```
