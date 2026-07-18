@@ -15,7 +15,7 @@ encode(text) -> token_ids
 If your prompt changes even slightly, you usually have to re-tokenize everything. TokDelta keeps a mutable byte buffer plus token offsets so edits can be applied incrementally.
 
 ## Install
-
+<!--
 ### From PyPI
 
 ```bash
@@ -32,7 +32,7 @@ pip install "tokdelta[tiktoken]"
 pip install "tokdelta[huggingface]"
 ```
 
-### For development
+### For development-->
 
 ```bash
 git clone git@github.com:latentvoyage/tokdelta.git
