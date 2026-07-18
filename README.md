@@ -35,7 +35,7 @@ pip install "tokdelta[huggingface]"
 ### For development
 
 ```bash
-git clone <repo-url>
+git clone git@github.com:latentvoyage/tokdelta.git
 cd tokdelta
 python -m venv .venv
 source .venv/bin/activate
