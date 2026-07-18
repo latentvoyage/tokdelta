@@ -47,7 +47,7 @@ pip install -e ".[tiktoken,dev]"
 ```python
 from tokdelta import PromptState
 
-state = PromptState("You are a helpful assistant.", "tiktoken", "gpt-4")
+state = PromptState("You are a helpful assistant.", "huggingface", "gpt2")
 
 print(state.token_ids)
 print(state.token_offsets)
