@@ -133,6 +133,10 @@ The current implementation already uses a Fenwick tree for O(log N) byte-to-toke
 
 Remaining work focuses on reducing bookkeeping overhead further, improving backend-specific offset accuracy, and exposing inference-oriented features such as KV-cache alignment or incremental detokenization.
 -->
+## TODO:
+1. Add fenwick tree implementation to get more speed-up
+2. Instead of specifying the indices in the insert function - identify the modification in nearly no time
+3. Transform the implementation to C/Rust for speed-ups
 
 ## Tests
 
